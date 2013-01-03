@@ -69,7 +69,7 @@ class QireRate:
         for key, val in self.__header.items():
             req.add_header(key, val)
         try:
-            res = urllib2.urlopen(req)
+            res = urllib2.urlopen(req, timeout=5)
         except:
             return None
             
@@ -131,9 +131,10 @@ class QireRate:
         
     def parse_html(self, url):
         req = urllib2.Request(url)
-        res = urllib2.urlopen(req)
+        res = urllib2.urlopen(req, timeout=5)
         html= res.read()
         res.close()
+        print "working on page:  1"
         soup = BeautifulSoup(html)
         category = soup.find(id = "byletter")['href'].strip('/')
         for tag in soup.findAll('h5'):
@@ -221,7 +222,7 @@ if __name__ == '__main__':
     file_name = "rate_file.csv"
     rate = QireRate(base_url, file_name)
     print 'task starts!'
-    for category_id in range(8, 9):
+    for category_id in (8,9,10,11,12,13,14,23,31,17):
         print 'working on category: ', category_id
         start_url = base_url + "/vod-showlist-id-" + str(category_id) + "-order-hits.html"
         #start_url = base_url + "/vod-showlist-id-" + str(category_id) + "-order-hits-c-2703-p-90.html"
