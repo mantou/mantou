@@ -68,7 +68,11 @@ class QireRate:
         # initial request header by header dict
         for key, val in self.__header.items():
             req.add_header(key, val)
-        res = urllib2.urlopen(req)
+        try:
+            res = urllib2.urlopen(req)
+        except:
+            return None
+            
         headerObject = res.headers
         streamData = ""
         while True:
@@ -147,29 +151,48 @@ class QireRate:
             
     def parse_json(self, url):
         json_res = self.get_XHR_response(url)
-        # get category name, from key 'letterurl'. orignal value is /action/
-        category = '%s' %json.loads(json_res)['letterurl'].strip('/')
-        pages = json.loads(json_res)['pages']
-        soup = BeautifulSoup(pages)
-        current_page_id = self.get_current_page_id(soup)
-        print "working on page: ", current_page_id
-        nextpage_url = self.get_nextpage_url(soup)
-        # the major part of json data contains all the video information
-        ajaxtxt = json.loads(json_res)['ajaxtxt']
-        soup = BeautifulSoup(ajaxtxt)
-        for tag in soup.findAll('h5'):
-            rate = self.get_rate(tag)
-            link_tag = self.get_link_tag(tag)
-            name = self.get_name(link_tag)
-            link = self.get_link_url(link_tag)
-            video_format = self.get_video_format(tag)
-            self.save_to_file(category, current_page_id, rate, name, link, video_format)
-            self.save_to_db(category, current_page_id, rate, name, link, video_format)
-        
-        # recursively get the data if it is not last page
-        if nextpage_url != None:# if nextpage == None, means this is the last page, so return
-            # self call to do recursively fetch
-            self.parse_json(nextpage_url)
+        if json_res != None:
+            # get category name, from key 'letterurl'. orignal value is /action/
+            category = '%s' %json.loads(json_res)['letterurl'].strip('/')
+            pages = json.loads(json_res)['pages']
+            soup = BeautifulSoup(pages)
+            current_page_id = self.get_current_page_id(soup)
+            print "working on page: ", current_page_id
+            nextpage_url = self.get_nextpage_url(soup)
+            # the major part of json data contains all the video information
+            ajaxtxt = json.loads(json_res)['ajaxtxt']
+            soup = BeautifulSoup(ajaxtxt)
+            for tag in soup.findAll('h5'):
+                rate = self.get_rate(tag)
+                link_tag = self.get_link_tag(tag)
+                name = self.get_name(link_tag)
+                link = self.get_link_url(link_tag)
+                video_format = self.get_video_format(tag)
+                self.save_to_file(category, current_page_id, rate, name, link, video_format)
+                self.save_to_db(category, current_page_id, rate, name, link, video_format)
+            
+            # recursively get the data if it is not last page
+            if nextpage_url != None:# if nextpage == None, means this is the last page, so return
+                # self call to do recursively fetch
+                self.parse_json(nextpage_url)
+        else:
+            print 'skiping page: ' + url
+            list_tmp = url.split('-')  # split url by '-'
+            #prefix like http://www.qire123.com/vod-showlist-id-8-order-hits-c-2703-p
+            prefix = '-'.join(list_tmp[:-1])
+            
+            list_tmp = list_tmp[-1].split('.')  # split "100.html" by '.'
+            current_page_id = list_tmp[0]   # get "100"
+            
+            #current_page_id = '%d' %current_page_id
+            current_page_id = int(current_page_id)  #convert "100" to int 100
+            next_page_id = current_page_id + 1  # get next page id: 101
+            next_page_id = str(next_page_id) #convert page id to string
+            
+            suffix = '.'.join([next_page_id, list_tmp[-1]])  # suffix like '101.html'
+            url = '-'.join([prefix, suffix])  # get next page url
+            print 'go to next page, page id: ' + next_page_id
+            self.parse_json(url)
             
     def fetch_info(self, url):
         if url.find("order-hits.html") > 0:
@@ -201,7 +224,7 @@ if __name__ == '__main__':
     for category_id in range(8, 9):
         print 'working on category: ', category_id
         start_url = base_url + "/vod-showlist-id-" + str(category_id) + "-order-hits.html"
+        #start_url = base_url + "/vod-showlist-id-" + str(category_id) + "-order-hits-c-2703-p-90.html"
         rate.fetch_info(start_url)
     print 'task ends!'
-        
     
