@@ -69,7 +69,7 @@ class QireRate:
         for key, val in self.__header.items():
             req.add_header(key, val)
         try:
-            res = urllib2.urlopen(req, timeout=5)
+            res = urllib2.urlopen(req, timeout=20)
         except:
             return None
             
@@ -131,7 +131,7 @@ class QireRate:
         
     def parse_html(self, url):
         req = urllib2.Request(url)
-        res = urllib2.urlopen(req, timeout=5)
+        res = urllib2.urlopen(req, timeout=20)
         html= res.read()
         res.close()
         print "working on page:  1"
