@@ -6,12 +6,9 @@ Created on Nov 6, 2012
 @author: Robert
 '''
 
-import pycurl
 import StringIO
 import urllib2
-import urllib
 import gzip
-import json
 from BeautifulSoup import BeautifulSoup
 import codecs
 import MySQLdb
@@ -77,7 +74,7 @@ class DoubanRate:
     def parse_item_info(self, tag):
         return True
     def generate_file_content(self, record, movie_name, movie_url, movie_desc, movie_rate, movie_comment_num):
-        record = ','.join([self.__dimension, self.__tag_name, movie_name, movie_url, movie_desc, movie_rate, movie_comment_num]) + '\n'
+        record = record + ','.join([self.__dimension, self.__tag_name, movie_name, movie_url, movie_desc, movie_rate, movie_comment_num]) + '\n'
         return record
     
     def save_to_file(self, record):
@@ -131,23 +128,13 @@ class DoubanRate:
                     movie_comment_num = None
                 
                 if movie_name is not None:
-                    '''
-                    print 'name: ', movie_name
-                    print 'url: ', movie_url
-                    print 'desc: ', movie_desc
-                    print 'rate: ', movie_rate
-                    print 'comment: ', movie_comment_num'''
                     movie_url = movie_url if movie_url is not None else ''
                     movie_desc = movie_desc if movie_desc is not None else ''
                     movie_rate = movie_rate if movie_rate is not None else '0.0'
                     movie_comment_num = movie_comment_num if (movie_comment_num is not None)&(movie_comment_num != '') else '0'  #must use: != '' but not using: is not ''
-                    '''print 'name: ' + movie_name
-                    print 'url: ' + movie_url
-                    print 'desc: ' + movie_desc
-                    print 'rate: ' + movie_rate
-                    print 'comment: ' + movie_comment_num'''
                     record = self.generate_file_content(record, movie_name, movie_url, movie_desc, movie_rate, movie_comment_num)
                     self.insert_to_db(movie_name, movie_url, movie_desc, movie_rate, movie_comment_num)
+            
             self.save_to_file(record)
             self.commit_to_db()
 
