@@ -16,6 +16,7 @@ from BeautifulSoup import BeautifulSoup
 import codecs
 import MySQLdb
 import sys
+import random
 
 
 class DoubanRate:
@@ -48,7 +49,19 @@ class DoubanRate:
         header['Accept-Language']='en-US,en;q=0.8,zh-CN;q=0.6,zh;q=0.4'
         header['Connection']='keep-alive'
         header['Host']='movie.douban.com'
-        header['User-Agent']='Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.97 Safari/537.11'
+        header['Referer']='http://movie.douban.com/'
+        user_agents = [
+                    'Mozilla/5.0 (Windows; U; Windows NT 5.1; it; rv:1.8.1.11) Gecko/20071127 Firefox/2.0.0.11',
+                    'Opera/9.25 (Windows NT 5.1; U; en)',
+                    'Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1; .NET CLR 1.1.4322; .NET CLR 2.0.50727)',
+                    'Mozilla/5.0 (compatible; Konqueror/3.5; Linux) KHTML/3.5.5 (like Gecko) (Kubuntu)',
+                    'Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.0.12) Gecko/20070731 Ubuntu/dapper-security Firefox/1.5.0.12',
+                    'Lynx/2.8.5rel.1 libwww-FM/2.14 SSL-MM/1.4.1 GNUTLS/1.2.9',
+                    'Mozilla/5.0 (X11; Linux i686) AppleWebKit/535.7 (KHTML, like Gecko) Ubuntu/11.04 Chromium/16.0.912.77 Chrome/16.0.912.77 Safari/535.7',
+                    'Mozilla/5.0 (X11; Ubuntu; Linux i686; rv:10.0) Gecko/20100101 Firefox/10.0',
+                    'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.97 Safari/537.11'
+                    ]
+        header['User-Agent'] = random.choice(user_agents)
         
         return header
 
@@ -61,17 +74,6 @@ class DoubanRate:
     def parse_item_info(self, tag):
         return True
     def generate_file_content(self, record, movie_name, movie_url, movie_desc, movie_rate, movie_comment_num):
-        if movie_name is None:
-            return record
-        if movie_url is None:
-            movie_url = ''
-        if movie_desc is None:
-            movie_desc = ''
-        if movie_rate is None:
-            movie_rate = ''
-        if movie_comment_num is None:
-            movie_comment_num = ''
-
         record = ','.join([self.__dimension, self.__tag_name, movie_name, movie_url, movie_desc, movie_rate, movie_comment_num]) + '\n'
         return record
     
@@ -87,14 +89,15 @@ class DoubanRate:
     def commit_to_db(self):
         self.__conn.commit
         
+    def open_page(self, url):
+        req = urllib2.Request(url, headers = self.__header)
+        return urllib2.urlopen(req, timeout=20)
+        
     def parse_page(self, url):
         print url
         self.set_page_url(url)
-        req = urllib2.Request(url)
-        for key, val in self.__header.items():
-            req.add_header(key, val)
-        req.add_header('Referer','http://movie.douban.com/')
-        res = urllib2.urlopen(req, timeout=20)
+        res = self.open_page(url)
+        #req.add_header('Referer','http://movie.douban.com/')
         html = res.read()
         html = gzip.GzipFile(fileobj=StringIO.StringIO(html)).read()
         soup = BeautifulSoup(html)
@@ -109,12 +112,29 @@ class DoubanRate:
                 if rate_tag is not None:
                     movie_rate = rate_tag.find('span', {'class':'rating_nums'}).string
                     movie_comment_num = rate_tag.find('span', {'class':'pl'}).string
-                else:
-                    movie_rate = ''
-                    movie_comment_num = ''
+                    #encoding because movie_comment_num is type of Unicode, can't be handled by str.isdigit
+                    #encoding is to Unicode2String
+                    movie_comment_num = filter(str.isdigit, movie_comment_num.encode('utf-8'))
+                    print movie_comment_num
                 
-                record = self.generate_file_content(record, movie_name, movie_url, movie_desc, movie_rate, movie_comment_num)
-                self.insert_to_db(movie_name, movie_url, movie_desc, movie_rate, movie_comment_num)
+                if movie_name is not None:
+                    '''
+                    print 'name: ', movie_name
+                    print 'url: ', movie_url
+                    print 'desc: ', movie_desc
+                    print 'rate: ', movie_rate
+                    print 'comment: ', movie_comment_num'''
+                    movie_url = movie_url if movie_url is not None else ''
+                    movie_desc = movie_desc if movie_desc is not None else ''
+                    movie_rate = movie_rate if movie_rate is not None else '0.0'
+                    movie_comment_num = movie_comment_num if movie_comment_num is not None else '0'
+                    '''print 'name: ' + movie_name
+                    print 'url: ' + movie_url
+                    print 'desc: ' + movie_desc
+                    print 'rate: ' + movie_rate
+                    print 'comment: ' + movie_comment_num'''
+                    record = self.generate_file_content(record, movie_name, movie_url, movie_desc, movie_rate, movie_comment_num)
+                    self.insert_to_db(movie_name, movie_url, movie_desc, movie_rate, movie_comment_num)
             self.save_to_file(record)
             self.commit_to_db()
 
@@ -144,10 +164,7 @@ class DoubanRate:
             return None
 
     def fetch_info(self):
-        req = urllib2.Request(self.__base_url)
-        for key, val in self.__header.items():
-            req.add_header(key, val)
-        res = urllib2.urlopen(req, timeout=20)
+        res = self.open_page(self.__base_url)
         html = res.read()
         html = gzip.GzipFile(fileobj=StringIO.StringIO(html)).read()
         soup = BeautifulSoup(html)
