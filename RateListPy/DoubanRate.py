@@ -18,7 +18,7 @@ import cookielib
 import time
 
 class DoubanRate:
-    
+
     def __init__(self, base_url):
         self.__base_url = base_url
         self.__rate_file= codecs.open('douban_rate.csv', 'w', 'utf-8')
