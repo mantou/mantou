@@ -190,8 +190,6 @@ class DoubanRate:
                 print self.__tag_name
                 url = self.get_first_page_url(tag_name_tag)
                 self.parse_page(url)
-                
-                
         
         '''        
         category = soup.find('a', {'name':'类型'})
