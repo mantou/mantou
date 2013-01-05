@@ -26,7 +26,6 @@ class DoubanRate:
         self.__base_url = base_url
         self.__rate_file= codecs.open('douban_rate.csv', 'w', 'utf-8')
         self.__rate_file.write(codecs.BOM_UTF8) # make sure Chinese display well in excel
-        #self.__douban_header = self.__set_douban_header()
         self.__dimension = ''
         self.__tag_name = ''
         self.__page_url = ''
@@ -69,8 +68,9 @@ class DoubanRate:
         return header
 
     def __del__(self):
+        self.__rate_file.close()
         self.__cursor.close()
-        #self.__conn.commit()
+        self.__conn.commit()
         self.__conn.close()
 
 
@@ -104,7 +104,7 @@ class DoubanRate:
         return opener.open(req, timeout=20)
         
     def parse_page(self, url):
-        #time.sleep(1)
+        time.sleep(1)
         print url
         self.set_page_url(url)
         res = self.open_page(url)
@@ -154,6 +154,7 @@ class DoubanRate:
             url = self.get_next_page_url(soup)
             if url is not None:
                 self.parse_page(url)
+        res.close()
             
     def get_dimension(self, tag):
         return tag.findPreviousSibling('a')['name']
@@ -171,8 +172,9 @@ class DoubanRate:
     def get_next_page_url(self, soup):
         next_page = soup.find('span', {'class':'next'})
         if next_page is not None:
-            next_page_url = next_page.a['href']
-            return next_page_url
+            if next_page.find('a') is not None:
+                next_page_url = next_page.a['href']
+                return next_page_url
         else:
             return None
 
